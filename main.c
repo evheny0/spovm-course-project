@@ -4,7 +4,7 @@ int main(int argc, char const *argv[])
 {
     int saddr_size, data_size;
     struct sockaddr saddr;
-    struct in_addr in;
+    // struct in_addr in;
 
     unsigned char *buffer = (unsigned char *) malloc(65536);    //Its Big!
 
@@ -145,7 +145,7 @@ void print_tcp_packet(unsigned char *data, int Size)
     fprintf(logfile, "\n");
 
     fprintf(logfile, "IP Header\n");
-    printf("%ls\n", data);
+    printf("%s\n", data);
     print_data(data, iphdrlen);
 
     fprintf(logfile, "TCP Header\n");
@@ -160,7 +160,6 @@ void print_tcp_packet(unsigned char *data, int Size)
 
 void find_pid_in_ss(int port, char *buffer)
 {
-    char cmd_outp[256];
     char cmd[256];
     FILE *pipe;
     snprintf(cmd, sizeof(cmd), "ss -tp | grep :%d", port);
