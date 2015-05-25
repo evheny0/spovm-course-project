@@ -18,11 +18,17 @@ void print_tcp_packet(unsigned char *, int);
 void print_udp_packet(unsigned char *, int);
 void print_icmp_packet(unsigned char *, int);
 void PrintData(unsigned char *, int);
+void find_pid_in_ss(int port, char *buffer);
 
+const int STRING_LENGTH = 256;
 int sock_raw;
 FILE *logfile;
 int tcp = 0, udp = 0, icmp = 0, others = 0, igmp = 0, total = 0, i, j;
 struct sockaddr_in source, dest;
 
+
+
+
+#include <netinet/if_ether.h>
 
 #endif // MAIN_H

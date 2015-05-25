@@ -1,6 +1,6 @@
 #include "main.h"
 
-int main()
+int main(int argc, char const *argv[])
 {
     int saddr_size, data_size;
     struct sockaddr saddr;
@@ -22,7 +22,7 @@ int main()
     while (1) {
         saddr_size = sizeof saddr;
         //Receive a packet
-        data_size = recvfrom(sock_raw, buffer, 65536, 0, &saddr, &saddr_size);
+        data_size = recvfrom(sock_raw, buffer, 65536, 0, &saddr, (socklen_t *) &saddr_size);
         if (data_size < 0) {
             printf("Recvfrom error , failed to get packets\n");
             return 1;
@@ -43,7 +43,6 @@ void ProcessPacket(unsigned char *buffer, int size)
     switch (iph->protocol) {    //Check the Protocol and do accordingly...
     case 1:                    //ICMP Protocol
         ++icmp;
-        //PrintIcmpPacket(Buffer,Size);
         break;
 
     case 2:                    //IGMP Protocol
@@ -69,11 +68,11 @@ void ProcessPacket(unsigned char *buffer, int size)
          tcp, udp, icmp, igmp, others, total);
 }
 
-void print_ip_header(unsigned char *Buffer, int Size)
+void print_ip_header(unsigned char *data, int Size)
 {
     unsigned short iphdrlen;
 
-    struct iphdr *iph = (struct iphdr *) Buffer;
+    struct iphdr *iph = (struct iphdr *) data;
     iphdrlen = iph->ihl * 4;
 
     memset(&source, 0, sizeof(source));
@@ -106,22 +105,25 @@ void print_ip_header(unsigned char *Buffer, int Size)
             inet_ntoa(dest.sin_addr));
 }
 
-void print_tcp_packet(unsigned char *Buffer, int Size)
+void print_tcp_packet(unsigned char *data, int Size)
 {
     unsigned short iphdrlen;
+    char pid_buffer[STRING_LENGTH];
 
-    struct iphdr *iph = (struct iphdr *) Buffer;
+    struct iphdr *iph = (struct iphdr *) data;
     iphdrlen = iph->ihl * 4;
 
-    struct tcphdr *tcph = (struct tcphdr *) (Buffer + iphdrlen);
+    struct tcphdr *tcph = (struct tcphdr *) (data + iphdrlen);
 
     fprintf(logfile, "\n\n***********************TCP Packet*************************\n");
 
-    print_ip_header(Buffer, Size);
+    print_ip_header(data, Size);
 
     fprintf(logfile, "\n");
     fprintf(logfile, "TCP Header\n");
     fprintf(logfile, "   |-Source Port      : %u\n", ntohs(tcph->source));
+    find_pid_in_ss(ntohs(tcph->dest), pid_buffer);
+    fprintf(logfile, "   |-PID              : %s\n", pid_buffer + 86);
     fprintf(logfile, "   |-Destination Port : %u\n", ntohs(tcph->dest));
     fprintf(logfile, "   |-Sequence Number    : %u\n", ntohl(tcph->seq));
     fprintf(logfile, "   |-Acknowledge Number : %u\n",
@@ -150,16 +152,33 @@ void print_tcp_packet(unsigned char *Buffer, int Size)
     fprintf(logfile, "\n");
 
     fprintf(logfile, "IP Header\n");
-    PrintData(Buffer, iphdrlen);
+    printf("%ls\n", data);
+    PrintData(data, iphdrlen);
 
     fprintf(logfile, "TCP Header\n");
-    PrintData(Buffer + iphdrlen, tcph->doff * 4);
+    PrintData(data + iphdrlen, tcph->doff * 4);
 
     fprintf(logfile, "Data Payload\n");
-    PrintData(Buffer + iphdrlen + tcph->doff * 4,
+    PrintData(data + iphdrlen + tcph->doff * 4,
               (Size - tcph->doff * 4 - iph->ihl * 4));
 
     fprintf(logfile, "\n###########################################################");
+}
+
+void find_pid_in_ss(int port, char *buffer)
+{
+    char cmd_outp[256];
+    char cmd[256];
+    FILE *pipe;
+    snprintf(cmd, sizeof(cmd), "ss -tp | grep :%d", port);
+
+    if ((pipe = popen(cmd, "r")) == NULL) {
+        puts(" ** ERR");
+        exit(1);
+    }
+
+    fgets(buffer, STRING_LENGTH, pipe);
+    pclose(pipe);
 }
 
 void print_udp_packet(unsigned char *Buffer, int Size)
@@ -246,11 +265,11 @@ void PrintData(unsigned char *data, int Size)
         {
             fprintf(logfile, "         ");
             for (j = i - 16; j < i; j++) {
-                if (data[j] >= 32 && data[j] <= 128)
+                // if (data[j] >= 32 && data[j] <= 128)
                     fprintf(logfile, "%c", (unsigned char) data[j]);    //if its a number or alphabet
 
-                else
-                    fprintf(logfile, ".");      //otherwise print a dot
+                // else
+                //     fprintf(logfile, ".");      //otherwise print a dot
             }
             fprintf(logfile, "\n");
         }
