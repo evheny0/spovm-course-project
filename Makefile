@@ -1,13 +1,13 @@
-OBJ = main.o
+OBJ = main.o print_to_file.o interface.o
 CFLAGS = -Wall
 
 all: bin
 
 bin: $(OBJ)
-	gcc $(CFLAGS) $(OBJ) -o bin -lncurses
+	gcc $(CFLAGS) $(OBJ) -o bin -lncurses -lcdk
 
 %.o : %.c
-	gcc $(CFLAGS) -c $<
+	g++ $(CFLAGS) -c $<
 
 clean:
 	rm bin $(OBJ)

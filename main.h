@@ -11,22 +11,29 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string.h>
+#include "print_to_file.h"
+#include "interface.h"  
+
+
+typedef struct {
+    char *from;
+    char *to;
+    char *pid;
+    int count;
+} connection_item;
+
 
 void process_packet(unsigned char *, int);
-void print_ip_header(unsigned char *, int);
-void print_tcp_packet(unsigned char *, int);
-void print_udp_packet(unsigned char *, int);
-void print_icmp_packet(unsigned char *, int);
-void print_data(unsigned char *, int);
-void find_pid_in_ss(int port, char *buffer);
+void out_tcp_packet(unsigned char *data, int size);
+void add_or_create_connection_item(char *from, char *to, char *pid);
 
-const int STRING_LENGTH = 256;
-int sock_raw;
 FILE *logfile;
-int tcp = 0, udp = 0, icmp = 0, others = 0, igmp = 0, total = 0, i, j;
-struct sockaddr_in source, dest;
-
-
+int tcp = 0, udp = 0, icmp = 0, others = 0, igmp = 0, total = 0;
+connection_item *connections = (connection_item *) malloc(SIZE_OF_BUFFER);
+char **connects_list = (char **) malloc(SIZE_OF_BUFFER);
+int connections_num = 0;
+extern struct sockaddr_in source, dest;
 
 
 #include <netinet/if_ether.h>
