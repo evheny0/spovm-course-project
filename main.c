@@ -37,38 +37,37 @@ int main(int argc, char const *argv[])
 
 void process_packet(unsigned char *buffer, int size)
 {
-    //Get the IP Header part of this packet
     struct iphdr *iph = (struct iphdr *) buffer;
     ++total;
-    switch (iph->protocol) {    //Check the Protocol and do accordingly...
-    case 1:                    //ICMP Protocol
+    switch (iph->protocol) {
+    case IPPROTO_ICMP:
         ++icmp;
+        print_icmp_packet(buffer, size);
         break;
 
-    case 2:                    //IGMP Protocol
+    case IPPROTO_IGMP:
         ++igmp;
         break;
 
-    case 6:                    //TCP Protocol
+    case IPPROTO_TCP:
         ++tcp;
         print_tcp_packet(buffer, size);
         break;
 
-    case 17:                   //UDP Protocol
+    case IPPROTO_UDP:
         ++udp;
         print_udp_packet(buffer, size);
         break;
 
-    default:                   //Some Other Protocol like ARP etc.
+    default:
         ++others;
         break;
     }
-    printf
-        ("TCP : %d   UDP : %d   ICMP : %d   IGMP : %d   Others : %d   Total : %d\r",
-         tcp, udp, icmp, igmp, others, total);
+    printf("TCP : %d   UDP : %d   ICMP : %d   IGMP : %d   Others : %d   Total : %d\r",
+           tcp, udp, icmp, igmp, others, total);
 }
 
-void print_ip_header(unsigned char *data, int Size)
+void print_ip_header(unsigned char *data, int size)
 {
     unsigned short iphdrlen;
 
@@ -98,7 +97,7 @@ void print_ip_header(unsigned char *data, int Size)
     fprintf(logfile, "   |-Destination IP   : %s\n", inet_ntoa(dest.sin_addr));
 }
 
-void print_tcp_packet(unsigned char *data, int Size)
+void print_tcp_packet(unsigned char *data, int size)
 {
     unsigned short iphdrlen;
     char pid_buffer[STRING_LENGTH];
@@ -110,7 +109,7 @@ void print_tcp_packet(unsigned char *data, int Size)
 
     fprintf(logfile, "\n\n***********************TCP Packet*************************\n");
 
-    print_ip_header(data, Size);
+    print_ip_header(data, size);
 
     fprintf(logfile, "\n");
     fprintf(logfile, "TCP Header\n");
@@ -119,33 +118,23 @@ void print_tcp_packet(unsigned char *data, int Size)
     fprintf(logfile, "   |-PID              : %s\n", pid_buffer + 86);
     fprintf(logfile, "   |-Destination Port : %u\n", ntohs(tcph->dest));
     fprintf(logfile, "   |-Sequence Number    : %u\n", ntohl(tcph->seq));
-    fprintf(logfile, "   |-Acknowledge Number : %u\n",
-            ntohl(tcph->ack_seq));
+    fprintf(logfile, "   |-Acknowledge Number : %u\n", ntohl(tcph->ack_seq));
     fprintf(logfile, "   |-Header Length      : %d DWORDS or %d BYTES\n",
             (unsigned int) tcph->doff, (unsigned int) tcph->doff * 4);
-    //fprintf(logfile,"   |-CWR Flag : %d\n",(unsigned int)tcph->cwr);
-    //fprintf(logfile,"   |-ECN Flag : %d\n",(unsigned int)tcph->ece);
-    fprintf(logfile, "   |-Urgent Flag          : %d\n",
-            (unsigned int) tcph->urg);
-    fprintf(logfile, "   |-Acknowledgement Flag : %d\n",
-            (unsigned int) tcph->ack);
-    fprintf(logfile, "   |-Push Flag            : %d\n",
-            (unsigned int) tcph->psh);
-    fprintf(logfile, "   |-Reset Flag           : %d\n",
-            (unsigned int) tcph->rst);
-    fprintf(logfile, "   |-Synchronise Flag     : %d\n",
-            (unsigned int) tcph->syn);
-    fprintf(logfile, "   |-Finish Flag          : %d\n",
-            (unsigned int) tcph->fin);
+    fprintf(logfile, "   |-Urgent Flag          : %d\n", (unsigned int) tcph->urg);
+    fprintf(logfile, "   |-Acknowledgement Flag : %d\n", (unsigned int) tcph->ack);
+    fprintf(logfile, "   |-Push Flag            : %d\n", (unsigned int) tcph->psh);
+    fprintf(logfile, "   |-Reset Flag           : %d\n", (unsigned int) tcph->rst);
+    fprintf(logfile, "   |-Synchronise Flag     : %d\n", (unsigned int) tcph->syn);
+    fprintf(logfile, "   |-Finish Flag          : %d\n", (unsigned int) tcph->fin);
     fprintf(logfile, "   |-Window         : %d\n", ntohs(tcph->window));
     fprintf(logfile, "   |-Checksum       : %d\n", ntohs(tcph->check));
     fprintf(logfile, "   |-Urgent Pointer : %d\n", tcph->urg_ptr);
     fprintf(logfile, "\n");
-    fprintf(logfile, "                        DATA Dump                         ");
+    fprintf(logfile, "                        DATA Dump");
     fprintf(logfile, "\n");
 
     fprintf(logfile, "IP Header\n");
-    printf("%s\n", data);
     print_data(data, iphdrlen);
 
     fprintf(logfile, "TCP Header\n");
@@ -153,7 +142,7 @@ void print_tcp_packet(unsigned char *data, int Size)
 
     fprintf(logfile, "Data Payload\n");
     print_data(data + iphdrlen + tcph->doff * 4,
-              (Size - tcph->doff * 4 - iph->ihl * 4));
+              (size - tcph->doff * 4 - iph->ihl * 4));
 
     fprintf(logfile, "\n###########################################################");
 }
@@ -173,7 +162,7 @@ void find_pid_in_ss(int port, char *buffer)
     pclose(pipe);
 }
 
-void print_udp_packet(unsigned char *Buffer, int Size)
+void print_udp_packet(unsigned char *Buffer, int size)
 {
 
     unsigned short iphdrlen;
@@ -185,7 +174,7 @@ void print_udp_packet(unsigned char *Buffer, int Size)
 
     fprintf(logfile, "\n\n***********************UDP Packet*************************\n");
 
-    print_ip_header(Buffer, Size);
+    print_ip_header(Buffer, size);
 
     fprintf(logfile, "\nUDP Header\n");
     fprintf(logfile, "   |-Source Port      : %d\n", ntohs(udph->source));
@@ -202,23 +191,23 @@ void print_udp_packet(unsigned char *Buffer, int Size)
 
     fprintf(logfile, "Data Payload\n");
     print_data(Buffer + iphdrlen + sizeof udph,
-              (Size - sizeof udph - iph->ihl * 4));
+              (size - sizeof udph - iph->ihl * 4));
 
     fprintf(logfile, "\n###########################################################");
 }
 
-void print_icmp_packet(unsigned char *Buffer, int Size)
+void print_icmp_packet(unsigned char *buffer, int size)
 {
     unsigned short iphdrlen;
 
-    struct iphdr *iph = (struct iphdr *) Buffer;
+    struct iphdr *iph = (struct iphdr *) buffer;
     iphdrlen = iph->ihl * 4;
 
-    struct icmphdr *icmph = (struct icmphdr *) (Buffer + iphdrlen);
+    struct icmphdr *icmph = (struct icmphdr *) (buffer + iphdrlen);
 
     fprintf(logfile, "\n\n***********************ICMP Packet*************************\n");
 
-    print_ip_header(Buffer, Size);
+    print_ip_header(buffer, size);
 
     fprintf(logfile, "\n");
 
@@ -231,57 +220,57 @@ void print_icmp_packet(unsigned char *Buffer, int Size)
         fprintf(logfile, "  (ICMP Echo Reply)\n");
     fprintf(logfile, "   |-Code : %d\n", (unsigned int) (icmph->code));
     fprintf(logfile, "   |-Checksum : %d\n", ntohs(icmph->checksum));
-    //fprintf(logfile,"   |-ID       : %d\n",ntohs(icmph->id));
-    //fprintf(logfile,"   |-Sequence : %d\n",ntohs(icmph->sequence));
     fprintf(logfile, "\n");
 
     fprintf(logfile, "IP Header\n");
-    print_data(Buffer, iphdrlen);
+    print_data(buffer, iphdrlen);
 
     fprintf(logfile, "UDP Header\n");
-    print_data(Buffer + iphdrlen, sizeof icmph);
+    print_data(buffer + iphdrlen, sizeof icmph);
 
     fprintf(logfile, "Data Payload\n");
-    print_data(Buffer + iphdrlen + sizeof icmph,
-              (Size - sizeof icmph - iph->ihl * 4));
+    print_data(buffer + iphdrlen + sizeof icmph,
+              (size - sizeof icmph - iph->ihl * 4));
 
     fprintf(logfile,
             "\n###########################################################");
 }
 
-void print_data(unsigned char *data, int Size)
+void print_data(unsigned char *data, int size)
 {
 
-    for (i = 0; i < Size; i++) {
-        if (i != 0 && i % 16 == 0)      //if one line of hex printing is complete...
-        {
+    for (i = 0; i < size; i++) {
+        if (i != 0 && i % 16 == 0) {    //if one line of hex printing is complete...
             fprintf(logfile, "         ");
             for (j = i - 16; j < i; j++) {
-                // if (data[j] >= 32 && data[j] <= 128)
-                    fprintf(logfile, "%c", (unsigned char) data[j]);    //if its a number or alphabet
-
-                // else
-                //     fprintf(logfile, ".");      //otherwise print a dot
+                if (data[j] >= 32 && data[j] <= 128) {    //if its a number or alphabet
+                    fprintf(logfile, "%c", (unsigned char) data[j]);
+                } else {
+                    fprintf(logfile, ".");
+                }
             }
             fprintf(logfile, "\n");
         }
 
-        if (i % 16 == 0)
+        if (i % 16 == 0) {
             fprintf(logfile, "   ");
+        }
+
         fprintf(logfile, " %02X", (unsigned int) data[i]);
 
-        if (i == Size - 1)      //print the last spaces
-        {
-            for (j = 0; j < 15 - i % 16; j++)
+        if (i == size - 1) {    //print the last spaces
+            for (j = 0; j < 15 - i % 16; j++) {
                 fprintf(logfile, "   ");        //extra spaces
+            }
 
             fprintf(logfile, "         ");
 
             for (j = i - i % 16; j <= i; j++) {
-                if (data[j] >= 32 && data[j] <= 128)
+                if (data[j] >= 32 && data[j] <= 128) {
                     fprintf(logfile, "%c", (unsigned char) data[j]);
-                else
+                } else {
                     fprintf(logfile, ".");
+                }
             }
             fprintf(logfile, "\n");
         }
