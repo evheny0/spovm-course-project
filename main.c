@@ -28,14 +28,14 @@ int main(int argc, char const *argv[])
             return 1;
         }
         //Now process the packet
-        ProcessPacket(buffer, data_size);
+        process_packet(buffer, data_size);
     }
     close(sock_raw);
     printf("Finished");
     return 0;
 }
 
-void ProcessPacket(unsigned char *buffer, int size)
+void process_packet(unsigned char *buffer, int size)
 {
     //Get the IP Header part of this packet
     struct iphdr *iph = (struct iphdr *) buffer;
@@ -83,26 +83,19 @@ void print_ip_header(unsigned char *data, int Size)
 
     fprintf(logfile, "\n");
     fprintf(logfile, "IP Header\n");
-    fprintf(logfile, "   |-IP Version        : %d\n",
-            (unsigned int) iph->version);
+    fprintf(logfile, "   |-IP Version        : %d\n", (unsigned int) iph->version);
     fprintf(logfile, "   |-IP Header Length  : %d DWORDS or %d Bytes\n",
             (unsigned int) iph->ihl, ((unsigned int) (iph->ihl)) * 4);
-    fprintf(logfile, "   |-Type Of Service   : %d\n",
-            (unsigned int) iph->tos);
+    fprintf(logfile, "   |-Type Of Service   : %d\n", (unsigned int) iph->tos);
     fprintf(logfile,
             "   |-IP Total Length   : %d  Bytes(Size of Packet)\n",
             ntohs(iph->tot_len));
     fprintf(logfile, "   |-Identification    : %d\n", ntohs(iph->id));
-    //fprintf(logfile,"   |-Reserved ZERO Field   : %d\n",(unsigned int)iphdr->ip_reserved_zero);
-    //fprintf(logfile,"   |-Dont Fragment Field   : %d\n",(unsigned int)iphdr->ip_dont_fragment);
-    //fprintf(logfile,"   |-More Fragment Field   : %d\n",(unsigned int)iphdr->ip_more_fragment);
     fprintf(logfile, "   |-TTL      : %d\n", (unsigned int) iph->ttl);
     fprintf(logfile, "   |-Protocol : %d\n", (unsigned int) iph->protocol);
     fprintf(logfile, "   |-Checksum : %d\n", ntohs(iph->check));
-    fprintf(logfile, "   |-Source IP        : %s\n",
-            inet_ntoa(source.sin_addr));
-    fprintf(logfile, "   |-Destination IP   : %s\n",
-            inet_ntoa(dest.sin_addr));
+    fprintf(logfile, "   |-Source IP        : %s\n", inet_ntoa(source.sin_addr));
+    fprintf(logfile, "   |-Destination IP   : %s\n", inet_ntoa(dest.sin_addr));
 }
 
 void print_tcp_packet(unsigned char *data, int Size)
@@ -153,13 +146,13 @@ void print_tcp_packet(unsigned char *data, int Size)
 
     fprintf(logfile, "IP Header\n");
     printf("%ls\n", data);
-    PrintData(data, iphdrlen);
+    print_data(data, iphdrlen);
 
     fprintf(logfile, "TCP Header\n");
-    PrintData(data + iphdrlen, tcph->doff * 4);
+    print_data(data + iphdrlen, tcph->doff * 4);
 
     fprintf(logfile, "Data Payload\n");
-    PrintData(data + iphdrlen + tcph->doff * 4,
+    print_data(data + iphdrlen + tcph->doff * 4,
               (Size - tcph->doff * 4 - iph->ihl * 4));
 
     fprintf(logfile, "\n###########################################################");
@@ -203,13 +196,13 @@ void print_udp_packet(unsigned char *Buffer, int Size)
 
     fprintf(logfile, "\n");
     fprintf(logfile, "IP Header\n");
-    PrintData(Buffer, iphdrlen);
+    print_data(Buffer, iphdrlen);
 
     fprintf(logfile, "UDP Header\n");
-    PrintData(Buffer + iphdrlen, sizeof udph);
+    print_data(Buffer + iphdrlen, sizeof udph);
 
     fprintf(logfile, "Data Payload\n");
-    PrintData(Buffer + iphdrlen + sizeof udph,
+    print_data(Buffer + iphdrlen + sizeof udph,
               (Size - sizeof udph - iph->ihl * 4));
 
     fprintf(logfile, "\n###########################################################");
@@ -244,20 +237,20 @@ void print_icmp_packet(unsigned char *Buffer, int Size)
     fprintf(logfile, "\n");
 
     fprintf(logfile, "IP Header\n");
-    PrintData(Buffer, iphdrlen);
+    print_data(Buffer, iphdrlen);
 
     fprintf(logfile, "UDP Header\n");
-    PrintData(Buffer + iphdrlen, sizeof icmph);
+    print_data(Buffer + iphdrlen, sizeof icmph);
 
     fprintf(logfile, "Data Payload\n");
-    PrintData(Buffer + iphdrlen + sizeof icmph,
+    print_data(Buffer + iphdrlen + sizeof icmph,
               (Size - sizeof icmph - iph->ihl * 4));
 
     fprintf(logfile,
             "\n###########################################################");
 }
 
-void PrintData(unsigned char *data, int Size)
+void print_data(unsigned char *data, int Size)
 {
 
     for (i = 0; i < Size; i++) {
