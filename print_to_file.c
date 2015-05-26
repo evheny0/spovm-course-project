@@ -5,7 +5,7 @@ struct sockaddr_in source, dest;
 
 void print_ip_header(unsigned char *data, int size)
 {
-    struct iphdr *iph = (struct iphdr *) data;
+    struct iphdr *iph = (struct iphdr *) (data + sizeof(struct ethhdr));
 
     memset(&source, 0, sizeof(source));
     source.sin_addr.s_addr = iph->saddr;
@@ -35,10 +35,10 @@ void print_tcp_packet(unsigned char *data, int size)
     unsigned short iphdrlen;
     char pid_buffer[STRING_LENGTH];
 
-    struct iphdr *iph = (struct iphdr *) data;
+    struct iphdr *iph = (struct iphdr *) (data + sizeof(struct ethhdr));
     iphdrlen = iph->ihl * 4;
 
-    struct tcphdr *tcph = (struct tcphdr *) (data + iphdrlen);
+    struct tcphdr *tcph = (struct tcphdr *) (data + iphdrlen + sizeof(struct ethhdr));
 
     fprintf(logfile, "\n\n***********************TCP Packet*************************\n");
 
@@ -85,10 +85,10 @@ void print_udp_packet(unsigned char *Buffer, int size)
 
     unsigned short iphdrlen;
 
-    struct iphdr *iph = (struct iphdr *) Buffer;
+    struct iphdr *iph = (struct iphdr *) (Buffer + sizeof(struct ethhdr));
     iphdrlen = iph->ihl * 4;
 
-    struct udphdr *udph = (struct udphdr *) (Buffer + iphdrlen);
+    struct udphdr *udph = (struct udphdr *) (Buffer + iphdrlen + sizeof(struct ethhdr));
 
     fprintf(logfile, "\n\n***********************UDP Packet*************************\n");
 
@@ -118,10 +118,10 @@ void print_icmp_packet(unsigned char *buffer, int size)
 {
     unsigned short iphdrlen;
 
-    struct iphdr *iph = (struct iphdr *) buffer;
+    struct iphdr *iph = (struct iphdr *) (buffer + sizeof(struct ethhdr));
     iphdrlen = iph->ihl * 4;
 
-    struct icmphdr *icmph = (struct icmphdr *) (buffer + iphdrlen);
+    struct icmphdr *icmph = (struct icmphdr *) (buffer + iphdrlen + sizeof(struct ethhdr));
 
     fprintf(logfile, "\n\n***********************ICMP Packet*************************\n");
 
@@ -132,10 +132,11 @@ void print_icmp_packet(unsigned char *buffer, int size)
     fprintf(logfile, "ICMP Header\n");
     fprintf(logfile, "   |-Type : %d", (unsigned int) (icmph->type));
 
-    if ((unsigned int) (icmph->type) == 11)
+    if ((unsigned int) (icmph->type) == 11) {
         fprintf(logfile, "  (TTL Expired)\n");
-    else if ((unsigned int) (icmph->type) == ICMP_ECHOREPLY)
+    } else if ((unsigned int) (icmph->type) == ICMP_ECHOREPLY){
         fprintf(logfile, "  (ICMP Echo Reply)\n");
+    }
     fprintf(logfile, "   |-Code : %d\n", (unsigned int) (icmph->code));
     fprintf(logfile, "   |-Checksum : %d\n", ntohs(icmph->checksum));
     fprintf(logfile, "\n");

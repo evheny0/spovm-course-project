@@ -4,6 +4,9 @@ int main(int argc, char const *argv[])
 {
     struct sockaddr saddr;
     int saddr_size, data_size = sizeof saddr;
+    clock_t curernt_time, last_time;
+    last_time = clock();
+
     if (check_f_params(argc, argv)) {
         print_to_file = 1;
         open_log_file();
@@ -12,13 +15,20 @@ int main(int argc, char const *argv[])
     }
 
     unsigned char *buffer = (unsigned char *) malloc(SIZE_OF_BUFFER);
-    int sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+    int sock_raw = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL)) ;
     if (sock_raw < 0) {
         printf("Socket Error\n");
         return 1;
     }
+    // setsockopt(sock_raw , SOL_SOCKET , SO_BINDTODEVICE , "wlan0" , strlen("wlan0") + 1 );
 
     while (1) {
+        curernt_time = clock();
+        if (!print_to_file && (curernt_time > (last_time + 40000))) {
+            last_time = curernt_time;
+            refresh_screen();
+        }
+
         if (check_keys()) {
             break;
         }
@@ -35,12 +45,14 @@ int main(int argc, char const *argv[])
 
 void process_packet(unsigned char *buffer, int size)
 {
-    struct iphdr *iph = (struct iphdr *) buffer;
+    struct iphdr *iph = (struct iphdr *)(buffer + sizeof(struct ethhdr));
     ++total;
     switch (iph->protocol) {
     case IPPROTO_ICMP:
         ++icmp;
-        print_icmp_packet(buffer, size);
+        if (print_to_file) {
+            print_icmp_packet(buffer, size);
+        }
         break;
 
     case IPPROTO_IGMP:
@@ -80,9 +92,9 @@ void out_udp_packet(unsigned char *data, int size)
 {
     char from[STRING_LENGTH], to[STRING_LENGTH], pid[STRING_LENGTH];
     unsigned short iphdrlen;
-    struct iphdr *iph = (struct iphdr *) data;
+    struct iphdr *iph = (struct iphdr *) (data + sizeof(struct ethhdr));
     iphdrlen = iph->ihl * 4;
-    struct udphdr *udph = (struct udphdr *) (data + iphdrlen);
+    struct udphdr *udph = (struct udphdr *) (data + iphdrlen + sizeof(struct ethhdr));
 
     memset(&source, 0, sizeof(source));
     source.sin_addr.s_addr = iph->saddr;
@@ -99,9 +111,9 @@ void out_tcp_packet(unsigned char *data, int size)
 {
     char from[STRING_LENGTH], to[STRING_LENGTH], pid[STRING_LENGTH];
     unsigned short iphdrlen;
-    struct iphdr *iph = (struct iphdr *) data;
+    struct iphdr *iph = (struct iphdr *) (data + sizeof(struct ethhdr));
     iphdrlen = iph->ihl * 4;
-    struct tcphdr *tcph = (struct tcphdr *) (data + iphdrlen);
+    struct tcphdr *tcph = (struct tcphdr *) (data + iphdrlen + sizeof(struct ethhdr));
 
     memset(&source, 0, sizeof(source));
     source.sin_addr.s_addr = iph->saddr;
@@ -119,8 +131,7 @@ void add_or_create_connection_item(char *from, char *to, char *pid, char *connec
     for (int i = 0; i < connections_num; ++i) {
         if (!strcmp(connections[i].to, to) && !strcmp(connections[i].from, from)) {
             connections[i].count++;
-            connects_list[i][70] = 0;
-            sprintf(connects_list[i], "%70s %d", connects_list[i], connections[i].count);
+            sprintf(connects_list[i] + 72, "%d", connections[i].count);
             return;
         }
     }
@@ -128,18 +139,16 @@ void add_or_create_connection_item(char *from, char *to, char *pid, char *connec
     char *from_new = (char *) calloc(STRING_LENGTH, sizeof(char));
     char *pid_new = (char *) calloc(STRING_LENGTH, sizeof(char));
     char *connect_string_new = (char *) calloc(STRING_LENGTH, sizeof(char));
-
     strcpy(to_new, to);
     strcpy(from_new, from);
     strcpy(pid_new, pid);
-    sprintf(connect_string_new, "%3s %21s %21s %10s     1", connect_type, from, to, pid);
+    sprintf(connect_string_new, "% 3s %21s %21s %22s 1", connect_type, from, to, pid);
     connections[connections_num].to = to_new;
     connections[connections_num].from = from_new;
     connections[connections_num].pid = pid_new;
     connects_list[connections_num] = connect_string_new;
     connections_num++;
-    refresh_screen();
-    // printf("%21s  > %21s  %s", from, to, pid);
+    // refresh_screen();
 }
 
 void find_pid_in_ss(int port, char *buffer)

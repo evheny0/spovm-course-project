@@ -62,6 +62,6 @@ int check_keys()
     default:
         return 0;
     }
-    refreshCDKScreen(connections_screen);
+    // refreshCDKScreen(connections_screen);
     return 0;
 }
