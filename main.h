@@ -26,8 +26,10 @@ typedef struct {
 
 void process_packet(unsigned char *, int);
 void out_tcp_packet(unsigned char *data, int size);
-void add_or_create_connection_item(char *from, char *to, char *pid);
+void out_udp_packet(unsigned char *data, int size);
+void add_or_create_connection_item(char *from, char *to, char *pid, char *connect_type);
 int check_f_params(int argc, char const *argv[]);
+void open_log_file();
 
 FILE *logfile;
 int tcp = 0, udp = 0, icmp = 0, others = 0, igmp = 0, total = 0;

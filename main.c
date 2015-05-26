@@ -2,31 +2,26 @@
 
 int main(int argc, char const *argv[])
 {
-    int saddr_size, data_size;
     struct sockaddr saddr;
+    int saddr_size, data_size = sizeof saddr;
     if (check_f_params(argc, argv)) {
         print_to_file = 1;
+        open_log_file();
     } else {
         init_window();
     }
 
     unsigned char *buffer = (unsigned char *) malloc(SIZE_OF_BUFFER);
-
-    logfile = fopen("log.txt", "w");
-    if (logfile == NULL) {
-        printf("Unable to create file.");
-    }
-
     int sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sock_raw < 0) {
         printf("Socket Error\n");
         return 1;
     }
+
     while (1) {
         if (check_keys()) {
             break;
         }
-        saddr_size = sizeof saddr;
         data_size = recvfrom(sock_raw, buffer, SIZE_OF_BUFFER, MSG_DONTWAIT, &saddr, (socklen_t *) &saddr_size);
         if (data_size < 0) {
             continue;
@@ -63,19 +58,46 @@ void process_packet(unsigned char *buffer, int size)
 
     case IPPROTO_UDP:
         ++udp;
-        print_udp_packet(buffer, size);
+        if (print_to_file) {
+            print_udp_packet(buffer, size);
+        } else {
+            out_udp_packet(buffer, size);
+        }
         break;
 
     default:
         ++others;
         break;
     }
-    // printf("TCP : %d   UDP : %d   ICMP : %d   IGMP : %d   Others : %d   Total : %d\r",
-    //        tcp, udp, icmp, igmp, others, total);
+
+    if (print_to_file) {
+        printf("TCP : %d   UDP : %d   ICMP : %d   IGMP : %d   Others : %d   Total : %d\r",
+               tcp, udp, icmp, igmp, others, total);
+    }
+}
+
+void out_udp_packet(unsigned char *data, int size)
+{
+    char from[STRING_LENGTH], to[STRING_LENGTH], pid[STRING_LENGTH];
+    unsigned short iphdrlen;
+    struct iphdr *iph = (struct iphdr *) data;
+    iphdrlen = iph->ihl * 4;
+    struct udphdr *udph = (struct udphdr *) (data + iphdrlen);
+
+    memset(&source, 0, sizeof(source));
+    source.sin_addr.s_addr = iph->saddr;
+    memset(&dest, 0, sizeof(dest));
+    dest.sin_addr.s_addr = iph->daddr;
+
+    find_pid_in_ss(ntohs(udph->dest), pid);
+    sprintf(from, "%s:%u", inet_ntoa(source.sin_addr), ntohs(udph->source));
+    sprintf(to, "%s:%u", inet_ntoa(dest.sin_addr), ntohs(udph->dest));
+    add_or_create_connection_item(from, to, pid + 86, (char *) "udp");
 }
 
 void out_tcp_packet(unsigned char *data, int size)
 {
+    char from[STRING_LENGTH], to[STRING_LENGTH], pid[STRING_LENGTH];
     unsigned short iphdrlen;
     struct iphdr *iph = (struct iphdr *) data;
     iphdrlen = iph->ihl * 4;
@@ -86,14 +108,13 @@ void out_tcp_packet(unsigned char *data, int size)
     memset(&dest, 0, sizeof(dest));
     dest.sin_addr.s_addr = iph->daddr;
 
-    char from[STRING_LENGTH], to[STRING_LENGTH], pid[STRING_LENGTH];
     find_pid_in_ss(ntohs(tcph->dest), pid);
     sprintf(from, "%s:%u", inet_ntoa(source.sin_addr), ntohs(tcph->source));
     sprintf(to, "%s:%u", inet_ntoa(dest.sin_addr), ntohs(tcph->dest));
-    add_or_create_connection_item(from, to, pid + 86);
+    add_or_create_connection_item(from, to, pid + 86, (char *) "tcp");
 }
 
-void add_or_create_connection_item(char *from, char *to, char *pid)
+void add_or_create_connection_item(char *from, char *to, char *pid, char *connect_type)
 {
     for (int i = 0; i < connections_num; ++i) {
         if (!strcmp(connections[i].to, to) && !strcmp(connections[i].from, from)) {
@@ -103,7 +124,6 @@ void add_or_create_connection_item(char *from, char *to, char *pid)
             return;
         }
     }
-    // printf("%d\n", connections_num);
     char *to_new = (char *) calloc(STRING_LENGTH, sizeof(char));
     char *from_new = (char *) calloc(STRING_LENGTH, sizeof(char));
     char *pid_new = (char *) calloc(STRING_LENGTH, sizeof(char));
@@ -112,8 +132,7 @@ void add_or_create_connection_item(char *from, char *to, char *pid)
     strcpy(to_new, to);
     strcpy(from_new, from);
     strcpy(pid_new, pid);
-    sprintf(connect_string_new, "%21s %21s %10s     1", from, to, pid);
-    // puts(connect_string_new);
+    sprintf(connect_string_new, "%3s %21s %21s %10s     1", connect_type, from, to, pid);
     connections[connections_num].to = to_new;
     connections[connections_num].from = from_new;
     connections[connections_num].pid = pid_new;
@@ -144,4 +163,12 @@ int check_f_params(int argc, char const *argv[])
         return 1;
     }
     return 0;
+}
+
+void open_log_file()
+{
+    logfile = fopen("log.txt", "w");
+    if (logfile == NULL) {
+        printf("Unable to create file.");
+    }
 }
