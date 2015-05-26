@@ -4,17 +4,19 @@ int main(int argc, char const *argv[])
 {
     int saddr_size, data_size;
     struct sockaddr saddr;
-    // struct in_addr in;
-    init_window();
+    if (check_f_params(argc, argv)) {
+        print_to_file = 1;
+    } else {
+        init_window();
+    }
 
-    unsigned char *buffer = (unsigned char *) malloc(SIZE_OF_BUFFER);    //Its Big!
+    unsigned char *buffer = (unsigned char *) malloc(SIZE_OF_BUFFER);
 
     logfile = fopen("log.txt", "w");
     if (logfile == NULL) {
         printf("Unable to create file.");
     }
 
-    //Create a raw socket that shall sniff
     int sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     if (sock_raw < 0) {
         printf("Socket Error\n");
@@ -25,14 +27,10 @@ int main(int argc, char const *argv[])
             break;
         }
         saddr_size = sizeof saddr;
-        //Receive a packet
         data_size = recvfrom(sock_raw, buffer, SIZE_OF_BUFFER, MSG_DONTWAIT, &saddr, (socklen_t *) &saddr_size);
         if (data_size < 0) {
             continue;
-            // printf("Recvfrom error , failed to get packets\n");
-            // return 1;
         }
-        //Now process the packet
         process_packet(buffer, data_size);
     }
     close(sock_raw);
@@ -56,7 +54,11 @@ void process_packet(unsigned char *buffer, int size)
 
     case IPPROTO_TCP:
         ++tcp;
-        print_tcp_packet(buffer, size);
+        if (print_to_file) {
+            print_tcp_packet(buffer, size);
+        } else {
+            out_tcp_packet(buffer, size);
+        }
         break;
 
     case IPPROTO_UDP:
@@ -134,4 +136,12 @@ void find_pid_in_ss(int port, char *buffer)
 
     fgets(buffer, STRING_LENGTH, pipe);
     pclose(pipe);
+}
+
+int check_f_params(int argc, char const *argv[])
+{
+    if ((argc > 1) && !strcmp(argv[1], "-f")) {
+        return 1;
+    }
+    return 0;
 }

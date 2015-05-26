@@ -27,12 +27,14 @@ typedef struct {
 void process_packet(unsigned char *, int);
 void out_tcp_packet(unsigned char *data, int size);
 void add_or_create_connection_item(char *from, char *to, char *pid);
+int check_f_params(int argc, char const *argv[]);
 
 FILE *logfile;
 int tcp = 0, udp = 0, icmp = 0, others = 0, igmp = 0, total = 0;
 connection_item *connections = (connection_item *) malloc(SIZE_OF_BUFFER);
 char **connects_list = (char **) malloc(SIZE_OF_BUFFER);
 int connections_num = 0;
+int print_to_file = 0;
 extern struct sockaddr_in source, dest;
 
 
